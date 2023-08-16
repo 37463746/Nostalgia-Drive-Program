@@ -14,8 +14,10 @@ Additional Compoents that are used include:
 
 -2x 10k Potentiometer
 
--2x 1W Speaker
+-2x 1W 8Ohm Speaker
 
 -2x LM386 Audio Amplifer
 
 -2x X9C103S Digital Potentiometer Module
+
+-9x Electrolytic Capacitor
