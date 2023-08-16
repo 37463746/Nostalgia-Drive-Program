@@ -1,0 +1,400 @@
+//Nostalgia Drive Program
+
+//Libraries
+#include <TEA5767.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <Servo.h>
+#include <DigiPotX9Cxxx.h>
+#include <SoftwareSerial.h>
+
+//Variables
+TEA5767 Radio;
+Servo servo1;
+Servo servo2;
+float currentFrequency = 98;
+const int potPin = A2;
+DigiPot pot1(6, 7, 8);
+DigiPot pot2(3, 4, 5);
+const int analogInputPin1 = A0;
+const int analogInputPin2 = A1;
+int pot2Position = 0;
+int servo2Position = 90;
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+SoftwareSerial BT(2, 13);
+char a;
+float freqMem1 = -1.00;
+float freqMem2 = -1.00;
+float freqMem3 = -1.00;
+float freqMem4 = -1.00;
+int storedFreq = 0;
+const int minValue = 0;
+const int maxValue = 4;
+
+void setup() {
+  //Setup for Components 
+  Serial.begin(9600);
+  Wire.begin();
+  Radio.init();
+  Radio.set_frequency(currentFrequency);
+  servo1.attach(9);
+  servo2.attach(10);
+  servo1.write(90);
+  servo2.write(90);
+  lcd.init();
+  lcd.setBacklight(50);
+  BT.begin(9600);
+  pot1.set(500);
+  pot2.set(500);
+
+  //Start-up Message
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Nostalgia Drive!");
+  delay(1000);
+  lcd.setCursor(3, 1);
+  lcd.print("Status: On");
+  delay(3000);
+  lcd.clear();
+}
+ 
+void changeFrequency(float increment) {
+  currentFrequency += increment;
+  if (currentFrequency > 108.0) {
+    currentFrequency = 108.0;
+  }
+  if (currentFrequency < 88.0) {
+    currentFrequency = 88.0;
+  }
+  Radio.set_frequency(currentFrequency);
+  delay(100);
+}
+
+void loop() {
+  //Volume Control
+  int potValue = analogRead(potPin);
+  int volume = map(potValue, 0, 50, 0, 100);
+
+  //Commands
+  if (BT.available()) {
+    //Freqeuncy Commands
+    a = (BT.read());
+    if (a == '+') {
+      changeFrequency(1);
+    }
+    if (a == '-') {
+      changeFrequency(-1);
+    }
+    if (a == '1') {
+      changeFrequency(0.5);
+    }
+    if (a == '2') {
+      changeFrequency(-0.5);
+    }
+    if (a == '3') {
+      changeFrequency(0.1);
+    }
+    if (a == '4') {
+      changeFrequency(-0.1);
+    }
+    //Volume Commands
+     {if (a == '7') {
+      pot1.increase(10);
+      pot2.increase(10);
+    }
+    if (a == '8') {
+      pot1.decrease(10);
+      pot2.decrease(10);
+    }
+    if (a == '5') {
+      pot1.increase(100); 
+      pot2.increase(100); 
+    }
+    if (a == '6') {
+      pot1.decrease(100); 
+      pot2.decrease(100); 
+    }
+    //Volume Motor Display
+    int analogValue2 = analogRead(analogInputPin2);
+    int mappedValue2 = map(analogValue2, 0, 1023, 0, 100);
+    if (mappedValue2 < 0) {
+      mappedValue2 = 0;
+      }
+    else if (mappedValue2 > 180) {
+      mappedValue2 = 180;
+      }
+    servo2.write(mappedValue2);}
+    //Memory Commands
+    if (a == 'a') {
+      freqMem1 = currentFrequency;
+      storedFreq++;
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Frequency Stored");
+      lcd.setCursor(0, 1);
+      lcd.print(freqMem1);
+      lcd.setCursor(5, 1);
+      lcd.print("Mhz(slot 1)");
+      delay(2000);
+      lcd.clear();
+    }
+    if (a == 'e') {
+      if (freqMem1 != -1) {
+        Radio.set_frequency(freqMem1);
+        currentFrequency = freqMem1;
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("Frequency");
+        lcd.setCursor(0, 1);
+        lcd.print("Retrieved slot 1");
+        delay(2000);
+        lcd.clear();
+      } 
+      else {
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("No Frequency");
+        lcd.setCursor(0, 1);
+        lcd.print("Stored (slot 1)");
+        delay(2000);
+        lcd.clear();
+      }
+    } else if (a == 'i') {
+      freqMem1 = -1;
+      storedFreq--;
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Frequency");
+      lcd.setCursor(0, 1);
+      lcd.print("Deleted (slot 1)");
+      delay(2000);
+      lcd.clear();
+    }
+    if (a == 'm') {
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Frequency set to:");
+      lcd.setCursor(0, 1);
+      lcd.print(freqMem1);
+      lcd.setCursor(5, 1);
+      lcd.print("Mhz(slot 1)");
+      delay(2000);
+      lcd.clear();
+    }
+    if (a == 'b') {
+      freqMem2 = currentFrequency;
+      storedFreq++;
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Frequency Stored");
+      lcd.setCursor(0, 1);
+      lcd.print(freqMem2);
+      lcd.setCursor(5, 1);
+      lcd.print("Mhz(slot 2)");
+      delay(2000);
+      lcd.clear();
+    }
+    if (a == 'f') {
+      if (freqMem2 != -1) {
+        Radio.set_frequency(freqMem2);
+        currentFrequency = freqMem2;
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("Frequency");
+        lcd.setCursor(0, 1);
+        lcd.print("Retrieved slot 2");
+        delay(2000);
+        lcd.clear();
+      } 
+      else {
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("No Frequency");
+        lcd.setCursor(0, 1);
+        lcd.print("Stored (slot 2)");
+        delay(2000);
+        lcd.clear();
+      }
+    } else if (a == 'j') {
+      freqMem2 = -1;
+      storedFreq--;
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Frequency");
+      lcd.setCursor(0, 1);
+      lcd.print("Deleted (slot 2)");
+      delay(2000);
+      lcd.clear();
+    }
+     if (a == 'n') {
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Frequency set to:");
+      lcd.setCursor(0, 1);
+      lcd.print(freqMem2);
+      lcd.setCursor(5, 1);
+      lcd.print("Mhz(slot 2)");
+      delay(2000);
+      lcd.clear();
+     }
+    if (a == 'c') {
+      freqMem3 = currentFrequency;
+      storedFreq++;
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Frequency Stored");
+      lcd.setCursor(0, 1);
+      lcd.print(freqMem3);
+      lcd.setCursor(5, 1);
+      lcd.print("Mhz(slot 3)");
+      delay(2000);
+      lcd.clear();
+    }
+    if (a == 'g') { 
+      if (freqMem3 != -1) {
+        Radio.set_frequency(freqMem3);
+        currentFrequency = freqMem3;
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("Frequency");
+        lcd.setCursor(0, 1);
+        lcd.print("Retrieved slot 3");
+        delay(2000);
+        lcd.clear();
+      } 
+      else {
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("No Frequency");
+        lcd.setCursor(0, 1);
+        lcd.print("Stored (slot 3)");
+        delay(2000);
+        lcd.clear();
+      }}
+    if (a == 'k') {
+      freqMem3 = -1;
+      storedFreq--;
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Frequency");
+      lcd.setCursor(0, 1);
+      lcd.print("Deleted (slot 3)");
+      delay(2000);
+      lcd.clear();
+    }
+     if (a == 'o') {
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Frequency set to:");
+      lcd.setCursor(0, 1);
+      lcd.print(freqMem3);
+      lcd.setCursor(5, 1);
+      lcd.print("Mhz(slot 3)");
+      delay(2000);
+      lcd.clear(); 
+     }
+    if (a == 'd') {
+      freqMem4 = currentFrequency;
+      storedFreq++;
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Frequency Stored");
+      lcd.setCursor(0, 1);
+      lcd.print(freqMem4);
+      lcd.setCursor(5, 1);
+      lcd.print("Mhz(slot 4)");
+      delay(2000);
+      lcd.clear();
+    }
+    if (a == 'h') {
+      if (freqMem4 != -1) {
+        Radio.set_frequency(freqMem4);
+        currentFrequency = freqMem4;
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("Frequency");
+        lcd.setCursor(0, 1);
+        lcd.print("Retrieved slot 4");
+        delay(2000);
+        lcd.clear();
+      } 
+      else {
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("No Frequency");
+        lcd.setCursor(0, 1);
+        lcd.print("Stored (slot 4)");
+        delay(2000);
+        lcd.clear();
+      }
+    } else if (a == 'l') {
+      freqMem4 = -1;
+      storedFreq--;
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Frequency");
+      lcd.setCursor(0, 1);
+      lcd.print("Deleted (slot 4)");
+      delay(2000);
+      lcd.clear();
+    }
+     if (a == 'p') {
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Frequency set to:");
+      lcd.setCursor(0, 1);
+      lcd.print(freqMem4);
+      lcd.setCursor(5, 1);
+      lcd.print("Mhz(slot 4)");
+      delay(2000);
+      lcd.clear();
+    }
+  if (a == '9') {
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Frequency: ");
+      lcd.setCursor(11, 0);
+      lcd.print(currentFrequency);
+      lcd.setCursor(0, 1);
+      lcd.print("Volume: ");
+      lcd.setCursor(8, 1);
+      lcd.print(volume); 
+      lcd.setCursor(10, 1);
+      lcd.print("/100"); 
+      delay(2000);
+      lcd.clear();
+    }
+  }
+
+  //Frequency Motor Display
+  int mappedPosition = map(currentFrequency, 108, 88, 0, 180);
+  servo1.write(mappedPosition);
+
+  //Memeory Function Bounds
+  if (storedFreq < minValue) {
+    storedFreq = minValue;
+  } else if (storedFreq > maxValue) {
+    storedFreq = maxValue; 
+  }
+
+  //Display Screen
+  lcd.setCursor(0, 0);
+  lcd.print("Frequency: ");
+  lcd.setCursor(11, 0);
+  lcd.print(currentFrequency);
+  lcd.setCursor(0, 1);
+  lcd.print("Slots Full: ");
+  lcd.setCursor(12, 1);
+  lcd.print(storedFreq);
+
+  /*Code For Controlling Freqeuncy via Non-Digital Potentiometer
+  (Note: this code has been disabeled on purpose)
+  potValue = analogRead(potPin);
+  currentFrequency = map(potValue, 0, 1023, 905, 1080) / 10.0;
+  if (currentFrequency != old_frequency) {
+    Radio.set_frequency(currentFrequency);
+    old_frequency = currentFrequency;
+  }*/
+
+  delay(100);
+}
