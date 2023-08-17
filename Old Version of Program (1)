@@ -1,0 +1,82 @@
+//FM Radio Code V4
+
+//Libaries 
+#include <TEA5767.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h> 
+TEA5767 Radio;
+LiquidCrystal_I2C lcd(0x27, 16, 2); 
+
+//Variables
+double old_frequency; //previous frequency the radio was tuned to
+double frequency; //cureent freqeuncy
+double current_freq; //current freqeuncy as a decimal 
+int signal_level; //strangth of signal recieved from current station
+unsigned char buf[5]; //stores data received from the TEA5767
+int stereo; //indicator for if the current station is broadcating in mono or stero
+int inByte; //stores data from the serial port
+int info=0; //indicator wether information about the current station has been sent to the serial port
+int potValue = 0; //set up for potentiometer 
+int potPin = A2; //set up for potentiometer
+
+void setup(){
+  lcd.init(); 
+  lcd.setBacklight(50); 
+  Serial.begin(9600);
+  Radio.init();
+  Radio.set_frequency(92.5);
+}
+
+void loop(){
+//Regulation of Serial Port
+if (Serial.available()>0){ //check if any data is on the serial port
+  inByte = Serial.read(); //read data on the serial port
+  if (inByte == '+' || inByte == '-'){  //if there is a change in signal/freqeuncy reset the variable "info"
+                                        //this is bc the info variable indicates if data is sent to the serial port
+    info=0;
+}}
+
+//Potentiometer Code
+potValue = analogRead(potPin); //read the value from the potentiometer
+frequency = map(potValue, 0, 1023, 925, 1080) / 10.0; //map the potentiometer value to a range between 87.5 and 108 MHz
+if (frequency != old_frequency){
+  Radio.set_frequency(frequency); //set the frequency of the radio to the new value from the potentiometer
+  old_frequency = frequency; //equate the old freqeuncy value to the new adjusted freqeuncy value
+}
+
+//Sending Information to the Serial Port
+if (Radio.read_status(buf) == 1){
+  current_freq = floor(Radio.frequency_available(buf) / 100000 + .5) / 10; //convert frequncy to a decimal value
+  signal_level = Radio.signal_level(buf); //obtain the strength of the radio signal recieved 
+  stereo = Radio.stereo(buf); //determine if the radio station is broadcasting in stero or mono
+  //by using the info variable the message will be printed only one time. 
+  if(info == 0){
+    Serial.print("Current freq: ");
+    Serial.print(current_freq);
+    Serial.print("MHz Signal: ");
+    if (stereo){
+     	Serial.print("STEREO "); 
+    } 
+		else{
+		 	Serial.print("MONO ");
+		} 
+    Serial.print(signal_level);
+    Serial.println("/15");
+    info=1; //indicate that information has been sent to the serial monitor
+}}
+  lcd.setCursor(0, 0);   
+  lcd.print("Freqeuncy: "); 
+  lcd.setCursor(11, 0);   
+  lcd.print(current_freq); 
+  lcd.setCursor(0, 1);  
+  lcd.print("SignalLevel: ");  
+  lcd.setCursor(12, 1);   
+  lcd.print(signal_level); 
+  lcd.setCursor(13, 1);  
+  lcd.print("/15");  
+  delay(100); //delay to avoid overwhelming the TEA5767 module
+}
+/* 
+Coments for Program:
+  -The ponteiometer code will need to be changed in the final version as digital variable resistors will be used 
+*/
