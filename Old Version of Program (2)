@@ -1,0 +1,211 @@
+//FM Radio Code V8
+
+//Libraries
+  #include <TEA5767.h>
+  #include <Wire.h>
+  #include <LiquidCrystal_I2C.h> 
+  #include <Servo.h>
+  #include <DigiPotX9Cxxx.h>
+  #include <SoftwareSerial.h>
+
+//Variables
+  TEA5767 Radio;
+  Servo servo1;
+  Servo servo2;
+  float currentFrequency = 91.5;
+  double old_frequency;
+  double frequency;
+  double current_freq;
+  int signal_level;
+  unsigned char buf[5];
+  int stereo;
+  int inByte;
+  int info = 0;
+  int potValue = 0;
+  int potPin = A2;
+  int potValue1 = 0;
+  int potPin1 = A3;
+  DigiPot pot1(6,7,8);
+  DigiPot pot2(3,4,5);
+  const int analogInputPin1 = A0;
+  const int analogInputPin2 = A1;
+  int pot2Position = 0;
+  int servo2Position = 90;
+  LiquidCrystal_I2C lcd(0x27, 16, 2); 
+  SoftwareSerial BT(2,13); 
+  char a;
+  int freqMem1;
+
+void setup(){
+  Serial.begin(9600);
+  Wire.begin();
+  Radio.init();
+  Radio.set_frequency(currentFrequency);
+  servo1.attach(9);
+  servo2.attach(10);
+  servo1.write(90);
+  servo2.write(90);
+  lcd.init(); 
+  lcd.setBacklight(50);
+  BT.begin(9600);  
+  pot1.set(100);
+  pot2.set(100);
+}
+
+void loop(){
+  potValue = analogRead(potPin);
+  current_freq = map(potValue, 0, 1023, 905, 1080) / 10.0;
+  if (current_freq != old_frequency){
+    Radio.set_frequency(current_freq);
+    old_frequency = current_freq;
+  }
+
+  if (BT.available()){
+    a=(BT.read());
+    if (a=='1')
+    {
+      changeFrequency(0.5);
+    }
+    if (a=='2')
+    {
+      changeFrequency(-0.5);
+    }
+    if (a=='3')
+    {
+      changeFrequency(0.1);
+    }
+    if (a=='4')
+    {
+      changeFrequency(-0.1);
+    }
+    if (a=='5')
+    {
+      changeFrequency(0.01);
+    }
+    if (a=='6')
+    {
+      changeFrequency(-0.01);
+    }
+    if (a=='9')
+    {
+      int freqMem1 = current_freq;
+    }
+    if (a=='0')
+    {
+      Radio.set_frequency(freqMem1);
+    }
+    if (a=='7')
+    {
+      pot1.increase(50);
+      pot2.increase(50);
+      servo2Position += 5;
+    }
+    if (a=='8')
+    {
+      pot1.decrease(50);
+      pot2.decrease(50);
+      servo2Position -= 5;
+    }
+    int mappedValue2 = map(servo2Position, 80, 150, 0, 180);
+    servo2.write(mappedValue2);
+    Serial.print("Servo 2 Position: ");
+    Serial.println(servo2Position);
+
+    delay(100);
+  }
+
+  if (Serial.available() > 0){
+    char input = Serial.read();
+    switch (input){
+      case '1':
+        changeFrequency(0.5);
+        break;
+      case '2':
+        changeFrequency(-0.5);
+        break;
+      case '5':
+        changeFrequency(0.1); 
+        break;
+      case '6':
+        changeFrequency(-0.1);
+        break;
+      case '7':
+        changeFrequency(0.01);
+        break;
+      case '8':
+        changeFrequency(-0.01);
+        break;
+    }
+    int servoCommand2 = Serial.parseInt();
+    switch (servoCommand2){
+      case 3:
+        pot2.increase(50);
+        pot1.increase(50);
+        servo2Position += 5;
+        break;
+      case 4:
+        pot2.decrease(50);
+        pot1.decrease(50);
+        servo2Position -= 5;
+        break;
+      default:
+        break;
+    }
+    int mappedValue2 = map(servo2Position, 150, 80, 0, 180);
+    servo2.write(mappedValue2);
+    Serial.print("Servo 2 Position: ");
+    Serial.println(servo2Position);
+    
+    delay(100);
+  }
+
+  if (Serial.available()>0){
+    inByte = Serial.read();
+    if (inByte == '+' || inByte == '-'){
+      info=0;
+    }
+  } 
+
+  if (Radio.read_status(buf) == 1){
+    current_freq = floor(Radio.frequency_available(buf) / 100000 + .5) / 10;
+    signal_level = Radio.signal_level(buf);
+    stereo = Radio.stereo(buf);
+    if(info == 0){
+      Serial.print("Current freq: ");
+      Serial.print(current_freq);
+      Serial.print("MHz Signal: ");
+      if (stereo){
+        Serial.print("STEREO "); 
+      } 
+      else{
+        Serial.print("MONO ");
+      } 
+      Serial.print(signal_level);
+      Serial.println("/15");
+      info=1;
+    }
+  }
+
+  lcd.setCursor(0, 0);   
+  lcd.print("Frequency: "); 
+  lcd.setCursor(11, 0);   
+  lcd.print(currentFrequency); 
+  lcd.setCursor(0, 1);  
+  lcd.print("SignalLevel: ");  
+  lcd.setCursor(12, 1);   
+  lcd.print(signal_level); 
+  lcd.setCursor(13, 1);  
+  lcd.print("/15");  
+  
+  delay(100);
+}
+
+void changeFrequency(float increment){
+  currentFrequency += increment;
+  Radio.set_frequency(currentFrequency);
+  Serial.print("Tuned frequency: ");
+  Serial.println(currentFrequency);
+  int mappedPosition = map(currentFrequency, 88, 108, 0, 180);
+  servo1.write(mappedPosition);
+  delay(100);
+}
