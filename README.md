@@ -1,7 +1,7 @@
 # Nostalgia-Drive-Program
 Code for an FM Radio that uses an Arduino Uno microcontroller
 
-A select few of the previous 10 iterations of the code have also been provided 
+A select few of the previous 10 iterations of the code have also been provided to display of the software of the system developed overtime
 
 Components that are used include:
 
