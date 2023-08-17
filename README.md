@@ -1,8 +1,9 @@
 # Nostalgia-Drive-Program
 Code for an FM Radio that uses an Arduino Uno microcontroller
 
+A select few of the previous 10 iterations of the code have also been provided 
 
-Additional Compoents that are used include:
+Compoents that are used include:
 
 -TEA5767 Radio Module
 
